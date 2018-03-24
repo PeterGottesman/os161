@@ -155,7 +155,15 @@ void cv_broadcast(struct cv *cv, struct lock *lock);
 struct rwlock {
         char *rwlock_name;
         // add what you need here
-        // (don't forget to mark things volatile as needed)
+	struct spinlock rwlock_spin;
+	HANGMAN_LOCKABLE(rwlock_hangman);
+	
+	volatile bool rwlock_write_waiting;
+	volatile bool rwlock_write_held;
+	struct wchan* rwlock_write_wchan;
+	
+	volatile unsigned rwlock_reader_count;
+	struct wchan* rwlock_read_wchan;
 };
 
 struct rwlock * rwlock_create(const char *);
