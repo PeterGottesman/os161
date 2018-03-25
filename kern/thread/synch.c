@@ -422,11 +422,13 @@ void rwlock_acquire_write(struct rwlock *rwlock)
 
 	while (rwlock->rwlock_write_held || rwlock->rwlock_reader_count != 0)
 	{
+		rwlock->rwlock_write_waiting = true;
 		wchan_sleep(rwlock->rwlock_write_wchan, &rwlock->rwlock_spin);
 	}
 	KASSERT(!rwlock->rwlock_write_held);
 	KASSERT(rwlock->rwlock_reader_count == 0);
 	rwlock->rwlock_write_held = true;
+	rwlock->rwlock_write_waiting = false;
 
 	HANGMAN_ACQUIRE(&curthread->t_hangman, &lock->rwlock_hangman);
 	spinlock_release(&rwlock->rwlock_spin);	
