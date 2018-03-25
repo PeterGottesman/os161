@@ -69,13 +69,25 @@
 #include <test.h>
 #include <synch.h>
 
+#define QUADS 4
+
+static struct semaphore *isem;	/* Intersection semaphore */
+static struct lock *quad_locks[QUADS];
+
 /*
  * Called by the driver during initialization.
  */
 
 void
 stoplight_init() {
-	return;
+	int i;
+	
+	isem = sem_create("intersection semaphore", 3);
+
+	for (i=0; i < QUADS; i++)
+	{
+		quad_locks[i] = lock_create("QuadLock");
+	}
 }
 
 /*
@@ -83,36 +95,61 @@ stoplight_init() {
  */
 
 void stoplight_cleanup() {
-	return;
+	int i;
+	sem_destroy(isem);
+	for (i=0; i < QUADS; i++)
+	{
+		lock_destroy(quad_locks[i]);
+	}
 }
 
 void
 turnright(uint32_t direction, uint32_t index)
 {
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
-	return;
+	P(isem);
+	lock_acquire(quad_locks[direction]);
+	
+	inQuadrant(direction, index);
+	leaveIntersection(index);
+
+	lock_release(quad_locks[direction]);
+	V(isem);
 }
 void
 gostraight(uint32_t direction, uint32_t index)
 {
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
-	return;
+	P(isem);
+	lock_acquire(quad_locks[direction]);
+	
+	inQuadrant(direction, index);
+	lock_acquire(quad_locks[(direction-1)%4]);
+	
+	inQuadrant((direction-1)%4, index);
+	lock_release(quad_locks[direction]);
+	
+	leaveIntersection(index);
+	lock_release(quad_locks[(direction-1)%4]);
+	
+	V(isem);
 }
 void
 turnleft(uint32_t direction, uint32_t index)
 {
-	(void)direction;
-	(void)index;
-	/*
-	 * Implement this function.
-	 */
-	return;
+	P(isem);
+	lock_acquire(quad_locks[direction]);
+	
+	inQuadrant(direction, index);
+	lock_acquire(quad_locks[(direction-1)%4]);
+	
+	inQuadrant((direction-1)%4, index);
+	lock_release(quad_locks[direction]);
+	lock_acquire(quad_locks[(direction-2)%4]);
+	
+	inQuadrant((direction-2)%4, index);
+	lock_release(quad_locks[(direction-1)%4]);
+	
+	leaveIntersection(index);
+	lock_release(quad_locks[(direction-2)%4]);
+	
+	V(isem);
 }
